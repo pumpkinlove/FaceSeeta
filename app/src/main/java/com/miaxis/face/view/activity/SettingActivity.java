@@ -4,6 +4,7 @@ import android.app.TimePickerDialog;
 import android.app.smdt.SmdtManager;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.RemoteException;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -113,7 +114,11 @@ public class SettingActivity extends BaseActivity {
         initData();
         initModeSpinner();
         initView();
-        smdtManager.smdtSetGpioValue(3, false);
+        try {
+            Face_App.getInstance().igpioControlDemo.setGpio(3, false);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 
     void initModeSpinner() {
@@ -311,7 +316,11 @@ public class SettingActivity extends BaseActivity {
         Face_App.getInstance().unableDog();
         smdtManager.smdtSetStatusBar(this, true);
         smdtManager.smdtSetGpioValue(2, false);
-        smdtManager.smdtSetGpioValue(3, false);
+        try {
+            Face_App.getInstance().igpioControlDemo.setGpio(3, false);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
         finish();
         throw new RuntimeException();
     }

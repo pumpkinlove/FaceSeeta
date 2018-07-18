@@ -103,6 +103,11 @@
 
         <activity android:name=".view.activity.WhiteActivity" />
         <activity android:name=".view.activity.LocalFeatureActivity" />
+        <service
+            android:name=".service.GPIOService"
+            android:enabled="true"
+            android:exported="true"
+            android:process=":aidl"/>
     </application>
 
 </manifest>

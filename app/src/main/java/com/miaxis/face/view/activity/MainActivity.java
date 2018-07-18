@@ -15,6 +15,7 @@ import android.media.AudioManager;
 import android.media.SoundPool;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.RemoteException;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
@@ -224,7 +225,6 @@ public class MainActivity extends BaseActivity implements SurfaceHolder.Callback
     private final Byte lock2 = 2;
     private AdvertiseDialog advertiseDialog;
 
-    private int decodeTimes = 0;
     private ProgressDialog progressDialog;
 
     @Override
@@ -553,55 +553,21 @@ public class MainActivity extends BaseActivity implements SurfaceHolder.Callback
         if (config.getNetFlag()) {
             UpLoadRecordService.startActionUpLoad(this, record, config);
         }
-        if (decodeTimes >= 500 && Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
-            Observable.just(0)
-                    .subscribeOn(AndroidSchedulers.mainThread())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .doOnNext(new Consumer<Integer>() {
-                        @Override
-                        public void accept(Integer integer) throws Exception {
-                            progressDialog.setMessage("设备将于3s后重启");
-                            progressDialog.setCancelable(false);
-                            progressDialog.show();
-                        }
-                    })
-                    .observeOn(Schedulers.io())
-                    .delay(1000, TimeUnit.MILLISECONDS)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .doOnNext(new Consumer<Integer>() {
-                        @Override
-                        public void accept(Integer integer) throws Exception {
-                            progressDialog.setMessage("设备将于2s后重启");
-                        }
-                    })
-                    .observeOn(Schedulers.io())
-                    .delay(1000, TimeUnit.MILLISECONDS)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .doOnNext(new Consumer<Integer>() {
-                        @Override
-                        public void accept(Integer integer) throws Exception {
-                            progressDialog.setMessage("设备将于1s后重启");
-                        }
-                    })
-                    .observeOn(Schedulers.io())
-                    .delay(1000, TimeUnit.MILLISECONDS)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(new Consumer<Integer>() {
-                        @Override
-                        public void accept(Integer integer) throws Exception {
-                            SmdtManager smdt = SmdtManager.create(MainActivity.this);
-                            smdt.smdtReboot("reboot");
-                        }
-                    }, new Consumer<Throwable>() {
-                        @Override
-                        public void accept(Throwable throwable) throws Exception {
-                            SmdtManager smdt = SmdtManager.create(MainActivity.this);
-                            smdt.smdtReboot("reboot");
-                        }
-                    });
+        if (decodeCount >= 500 && Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(5000);
+                    } catch (InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
+                    smdtManager.smdtReboot("reboot");
+                }
+            }).start();
         }
     }
-
+    private int decodeCount;
     /* 处理 时间变化 事件， 实时更新时间*/
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onTimeEvent(TimeChangeEvent e) {
@@ -759,19 +725,17 @@ public class MainActivity extends BaseActivity implements SurfaceHolder.Callback
     private void openLed() {
         try {
             Thread.sleep(GPIO_INTERVAL);
-            int r = smdtManager.smdtSetExtrnalGpioValue(3, true);
-            Log.e(TAG, "openLed r = " + r);
-        } catch (InterruptedException e) {
+            Face_App.getInstance().igpioControlDemo.setGpio(3, true);
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     private void closeLed() {
-
         try {
             Thread.sleep(GPIO_INTERVAL);
-            int r = smdtManager.smdtSetGpioValue(3, false);
-        } catch (InterruptedException e) {
+            Face_App.getInstance().igpioControlDemo.setGpio(3, false);
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -881,6 +845,7 @@ public class MainActivity extends BaseActivity implements SurfaceHolder.Callback
         System.arraycopy(bCardInfo, iLen, id_pImage, 0, id_pImage.length);
         long t1 = System.currentTimeMillis();
         int rr = decodeIdPhoto(id_pImage);
+        decodeCount ++;
         long t2 = System.currentTimeMillis();
         if (WRITE_TIME) {
             LogUtil.writeLog("解码身份证照片耗时：" + (t2 - t1));
@@ -1085,7 +1050,6 @@ public class MainActivity extends BaseActivity implements SurfaceHolder.Callback
     }
 
     private int decodeIdPhoto(byte[] wltdata) {
-        decodeTimes++;
         String filepath = FileUtil.getAvailableWltPath(this);
         try {
             long t1 = System.currentTimeMillis();
@@ -1346,7 +1310,7 @@ public class MainActivity extends BaseActivity implements SurfaceHolder.Callback
             while (true) {
                 if (!readIdFlag || localFlag) {
                     try {
-                        Thread.sleep(1000);
+                        Thread.sleep(100);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }

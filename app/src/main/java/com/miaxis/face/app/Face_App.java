@@ -2,8 +2,12 @@ package com.miaxis.face.app;
 
 import android.app.Application;
 import android.app.smdt.SmdtManager;
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
+import android.os.IBinder;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
@@ -19,8 +23,10 @@ import com.miaxis.face.greendao.gen.DaoMaster;
 import com.miaxis.face.greendao.gen.DaoSession;
 import com.miaxis.face.greendao.gen.RecordDao;
 import com.miaxis.face.service.ClearService;
+import com.miaxis.face.service.GPIOService;
 import com.miaxis.face.service.UpLoadRecordService;
 import com.miaxis.face.util.FileUtil;
+import com.miaxis.gpioaidl.IGPIOControl;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -54,10 +60,25 @@ public class Face_App extends Application {
     private static Face_App app;
     private boolean feedFlag;
     private Thread tFeedDog;
+    public IGPIOControl igpioControlDemo;
+    private ServiceConnection mConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            //连接后拿到 Binder，转换成 AIDL，在不同进程会返回个代理
+            igpioControlDemo = IGPIOControl.Stub.asInterface(service);
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            igpioControlDemo = null;
+        }
+    };
 
     @Override
     public void onCreate() {
         super.onCreate();
+        Intent intent1 = new Intent(getApplicationContext(), GPIOService.class);
+        bindService(intent1, mConnection, BIND_AUTO_CREATE);
         new Thread(new Runnable() {
             @Override
             public void run() {
